@@ -156,7 +156,7 @@ local function forcePart(p)
 	align.Attachment1 = centerAttachment
 	align.MaxForce = math.huge
 	align.MaxVelocity = math.huge
-	align.Responsiveness = 500
+	align.Responsiveness = 1000
 
 	-- torque para evitar rotações bruscas
 	local torque = Instance.new("Torque", p)
