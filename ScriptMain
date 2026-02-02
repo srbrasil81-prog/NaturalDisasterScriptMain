@@ -116,7 +116,7 @@ local function forcePart(p)
 	align.Attachment1 = centerAttachment
 	align.MaxForce = math.huge
 	align.MaxVelocity = math.huge
-	align.Responsiveness = 150
+	align.Responsiveness = 500
 
 	local torque = Instance.new("Torque", p)
 	torque.Attachment0 = a0
@@ -185,5 +185,5 @@ LocalPlayer.CharacterAdded:Connect(function()
 	deactivate()
 	giveTool()
 end)
-loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()
 InitSound:Play()
+loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()
