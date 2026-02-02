@@ -22,6 +22,15 @@ local currentTargetHRP = nil
 local lastUpdate = 0
 local hbConn, descConn
 
+-- ===============
+-- InitSound
+-- ===========≈===
+local InitSound = Instance.new("Sound")
+InitSound.Name = "InitSound"
+InitSound.SoundId = "rbxassetid://99275538772111"
+InitSound.Volume = 1
+InitSound.Parent = game:GetService("SoundService")
+
 -- ==============================
 -- HIDDEN PART (ALVO DOS ALIGN)
 -- ==============================
@@ -161,6 +170,7 @@ local function giveTool()
 	tool.Name = TOOL_NAME
 	tool.RequiresHandle = false
 	tool.CanBeDropped = false
+    tool.TextureId = "rbxassetid://933165572"
 
 	tool.Equipped:Connect(activate)
 	tool.Unequipped:Connect(deactivate)
@@ -176,3 +186,4 @@ LocalPlayer.CharacterAdded:Connect(function()
 	giveTool()
 end)
 loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()
+InitSound:Play()
