@@ -1,0 +1,177 @@
+-- ==============================
+-- SERVICES
+-- ==============================
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+local LocalPlayer = Players.LocalPlayer
+
+-- ==============================
+-- CONFIG
+-- ==============================
+local UPDATE_INTERVAL = 1 -- segundos (troca de alvo)
+local MAX_DISTANCE = 120 -- só puxa quem estiver perto
+local TOOL_NAME = "ChaosTool"
+
+-- ==============================
+-- STATE
+-- ==============================
+local active = false
+local currentTargetHRP = nil
+local lastUpdate = 0
+local hbConn, descConn
+
+-- ==============================
+-- HIDDEN PART (ALVO DOS ALIGN)
+-- ==============================
+local folder = Instance.new("Folder", Workspace)
+folder.Name = "_ChaosFolder"
+
+local centerPart = Instance.new("Part", folder)
+centerPart.Anchored = true
+centerPart.CanCollide = false
+centerPart.Transparency = 1
+centerPart.Size = Vector3.new(1,1,1)
+
+local centerAttachment = Instance.new("Attachment", centerPart)
+
+-- ==============================
+-- NETWORK (controle físico)
+-- ==============================
+if not getgenv().Network then
+	getgenv().Network = { BaseParts = {} }
+
+	RunService.Heartbeat:Connect(function()
+		pcall(function()
+			sethiddenproperty(LocalPlayer, "SimulationRadius", math.huge)
+			LocalPlayer.ReplicationFocus = Workspace
+		end)
+	end)
+end
+
+-- ==============================
+-- UTILS
+-- ==============================
+local function getHRP(char)
+	return char and char:FindFirstChild("HumanoidRootPart")
+end
+
+local function getNearestPlayer()
+	local myChar = LocalPlayer.Character
+	local myHRP = getHRP(myChar)
+	if not myHRP then return nil end
+
+	local nearest, dist = nil, MAX_DISTANCE
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr ~= LocalPlayer then
+			local hrp = getHRP(plr.Character)
+			if hrp then
+				local d = (hrp.Position - myHRP.Position).Magnitude
+				if d < dist then
+					dist = d
+					nearest = hrp
+				end
+			end
+		end
+	end
+	return nearest
+end
+
+-- ==============================
+-- FORCE PART (ANTI-BUG)
+-- ==============================
+local function forcePart(p)
+	if not p:IsA("BasePart") then return end
+	if p.Anchored then return end
+	if p.Size.Magnitude < 1 then return end
+	if p:FindFirstChild("_Chaos") then return end
+	if p:IsDescendantOf(LocalPlayer.Character) then return end
+
+	local tag = Instance.new("BoolValue")
+	tag.Name = "_Chaos"
+	tag.Parent = p
+
+	p.CanCollide = false
+
+	for _, c in ipairs(p:GetChildren()) do
+		if c:IsA("BodyMover") or c:IsA("RocketPropulsion") then
+			c:Destroy()
+		end
+	end
+
+	local a0 = Instance.new("Attachment", p)
+
+	local align = Instance.new("AlignPosition", p)
+	align.Attachment0 = a0
+	align.Attachment1 = centerAttachment
+	align.MaxForce = math.huge
+	align.MaxVelocity = math.huge
+	align.Responsiveness = 150
+
+	local torque = Instance.new("Torque", p)
+	torque.Attachment0 = a0
+	torque.Torque = Vector3.new(1e5,1e5,1e5)
+end
+
+-- ==============================
+-- ACTIVATE / DEACTIVATE
+-- ==============================
+local function activate()
+	if active then return end
+	active = true
+
+	-- força as parts atuais
+	for _, v in ipairs(Workspace:GetDescendants()) do
+		forcePart(v)
+	end
+
+	-- novas parts
+	descConn = Workspace.DescendantAdded:Connect(forcePart)
+
+	-- loop principal
+	hbConn = RunService.Heartbeat:Connect(function(dt)
+		if not active then return end
+
+		-- troca alvo a cada UPDATE_INTERVAL
+		if tick() - lastUpdate >= UPDATE_INTERVAL then
+			currentTargetHRP = getNearestPlayer()
+			lastUpdate = tick()
+		end
+
+		if currentTargetHRP then
+			centerAttachment.WorldCFrame = currentTargetHRP.CFrame
+		end
+	end)
+end
+
+local function deactivate()
+	active = false
+	if hbConn then hbConn:Disconnect() hbConn = nil end
+	if descConn then descConn:Disconnect() descConn = nil end
+end
+
+-- ==============================
+-- TOOL (RECRIA AO MORRER)
+-- ==============================
+local function giveTool()
+	if LocalPlayer.Backpack:FindFirstChild(TOOL_NAME) then return end
+
+	local tool = Instance.new("Tool")
+	tool.Name = TOOL_NAME
+	tool.RequiresHandle = false
+	tool.CanBeDropped = false
+
+	tool.Equipped:Connect(activate)
+	tool.Unequipped:Connect(deactivate)
+
+	tool.Parent = LocalPlayer.Backpack
+end
+
+giveTool()
+
+LocalPlayer.CharacterAdded:Connect(function()
+	task.wait(1)
+	deactivate()
+	giveTool()
+end)
