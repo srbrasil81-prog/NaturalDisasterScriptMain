@@ -1,11 +1,32 @@
 -- ==============================
+-- ONE-SHOT
+-- ==============================
+local function executarUmaVez(player)
+	if not player then return end
+	if player:FindFirstChild("_OneShot") then return end
+
+	local tag = Instance.new("BoolValue")
+	tag.Name = "_OneShot"
+	tag.Value = true
+	tag.Parent = player
+
+	-- Ação única:
+	setclipboard("https://discord.gg/wj4SRr3Xy")
+end
+
+-- ==============================
 -- SERVICES
 -- ==============================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
+local SoundService = game:GetService("SoundService")
+local TestService = game:GetService("TestService")
 
 local LocalPlayer = Players.LocalPlayer
+
+-- Tenta executar uma vez já ao carregar (caso queira que rode no start)
+executarUmaVez(LocalPlayer)
 
 -- ==============================
 -- CONFIG
@@ -22,15 +43,27 @@ local currentTargetHRP = nil
 local lastUpdate = 0
 local hbConn, descConn
 
+-- ==============================
+-- Debugger
+-- ==============================
+local SoundInit = false
+local HiddenPart = false
+local Network = false
+local UTILS = false
+local ForcePart = false
+local ToolEquiperDebugger = false
+local ToolReCreante = false
+
 -- ===============
 -- InitSound
--- ===========≈===
+-- ===============
 local InitSound = Instance.new("Sound")
 InitSound.Name = "InitSound"
 InitSound.SoundId = "rbxassetid://99275538772111"
 InitSound.Volume = 1
-InitSound.Parent = game:GetService("SoundService")
+InitSound.Parent = SoundService
 
+SoundInit = true
 -- ==============================
 -- HIDDEN PART (ALVO DOS ALIGN)
 -- ==============================
@@ -45,20 +78,25 @@ centerPart.Size = Vector3.new(1,1,1)
 
 local centerAttachment = Instance.new("Attachment", centerPart)
 
+HiddenPart = true
 -- ==============================
--- NETWORK (controle físico)
+-- NETWORK (controle físico) -- NOTE: funções abaixo podem precisar de exploit
 -- ==============================
-if not getgenv().Network then
+if (type(getgenv) == "function") and not getgenv().Network then
 	getgenv().Network = { BaseParts = {} }
 
 	RunService.Heartbeat:Connect(function()
 		pcall(function()
-			sethiddenproperty(LocalPlayer, "SimulationRadius", math.huge)
+			-- sethiddenproperty só funciona em alguns ambientes (exploit)
+			if type(sethiddenproperty) == "function" then
+				sethiddenproperty(LocalPlayer, "SimulationRadius", math.huge)
+			end
 			LocalPlayer.ReplicationFocus = Workspace
 		end)
 	end)
 end
 
+Network = true
 -- ==============================
 -- UTILS
 -- ==============================
@@ -87,6 +125,7 @@ local function getNearestPlayer()
 	return nearest
 end
 
+UTILS = true
 -- ==============================
 -- FORCE PART (ANTI-BUG)
 -- ==============================
@@ -104,6 +143,7 @@ local function forcePart(p)
 	p.CanCollide = false
 
 	for _, c in ipairs(p:GetChildren()) do
+		-- remove body movers que possam conflitar
 		if c:IsA("BodyMover") or c:IsA("RocketPropulsion") then
 			c:Destroy()
 		end
@@ -118,11 +158,13 @@ local function forcePart(p)
 	align.MaxVelocity = math.huge
 	align.Responsiveness = 500
 
+	-- torque para evitar rotações bruscas
 	local torque = Instance.new("Torque", p)
 	torque.Attachment0 = a0
 	torque.Torque = Vector3.new(1e5,1e5,1e5)
 end
 
+ForcePart = true
 -- ==============================
 -- ACTIVATE / DEACTIVATE
 -- ==============================
@@ -135,7 +177,7 @@ local function activate()
 		forcePart(v)
 	end
 
-	-- novas parts
+	-- força novas parts que aparecerem
 	descConn = Workspace.DescendantAdded:Connect(forcePart)
 
 	-- loop principal
@@ -148,12 +190,13 @@ local function activate()
 			lastUpdate = tick()
 		end
 
-		if currentTargetHRP then
+		if currentTargetHRP and currentTargetHRP.Parent then
 			centerAttachment.WorldCFrame = currentTargetHRP.CFrame
 		end
 	end)
 end
 
+ToolEquiperDebugger = true
 local function deactivate()
 	active = false
 	if hbConn then hbConn:Disconnect() hbConn = nil end
@@ -164,26 +207,57 @@ end
 -- TOOL (RECRIA AO MORRER)
 -- ==============================
 local function giveTool()
+	if not LocalPlayer or not LocalPlayer:FindFirstChild("Backpack") then return end
 	if LocalPlayer.Backpack:FindFirstChild(TOOL_NAME) then return end
 
 	local tool = Instance.new("Tool")
 	tool.Name = TOOL_NAME
 	tool.RequiresHandle = false
 	tool.CanBeDropped = false
-    tool.TextureId = "rbxassetid://933165572"
+	tool.TextureId = "rbxassetid://933165572"
 
-	tool.Equipped:Connect(activate)
+	tool.Equipped:Connect(function()
+		-- chama a ação one-shot na primeira vez que o player equipar
+		executarUmaVez(LocalPlayer)
+
+		-- depois ativa o comportamento normal da tool
+		activate()
+	end)
+
 	tool.Unequipped:Connect(deactivate)
 
 	tool.Parent = LocalPlayer.Backpack
 end
 
+ToolReCreante = true
+-- Cria a tool
 giveTool()
 
+-- Recria a tool ao spawnar (caso necessário)
 LocalPlayer.CharacterAdded:Connect(function()
 	task.wait(1)
 	deactivate()
 	giveTool()
 end)
+
+-- Toca o som de init (vai reproduzir globalmente)
 InitSound:Play()
-loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()
+
+-- Obs: a linha abaixo executa um script externo via HTTP (normalmente exploit)
+-- Se você quiser manter, pode deixar; caso contrário, comente/remova.
+if type(loadstring) == "function" and type(game.HttpGet) == "function" then
+	-- tenta evitar cache: passe true se quiser (game:HttpGet(url, true))
+	pcall(function()
+		loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()
+	end)
+end
+
+TestService:Message(
+	"InitSound:", tostring(SoundInit),
+	"HiddenPart:", tostring(HiddenPart),
+	"Network:", tostring(Network)
+    "UTILS:", tostring(UTILS)
+    "ForcePart:", tostring(ForcePart)
+    "ToolEquiperDebugger:", tostring(ToolEquiperDebugger)
+    "ToolReCreante:", tostring(ToolReCreante)
+)
