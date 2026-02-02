@@ -31,8 +31,8 @@ executarUmaVez(LocalPlayer)
 -- ==============================
 -- CONFIG
 -- ==============================
-local UPDATE_INTERVAL = 1 -- segundos (troca de alvo)
-local MAX_DISTANCE = 120 -- só puxa quem estiver perto
+local UPDATE_INTERVAL = 2 -- segundos (troca de alvo)
+local MAX_DISTANCE = 250 -- só puxa quem estiver perto
 local TOOL_NAME = "ChaosTool"
 
 -- ==============================
@@ -60,7 +60,7 @@ local ToolReCreante = false
 local InitSound = Instance.new("Sound")
 InitSound.Name = "InitSound"
 InitSound.SoundId = "rbxassetid://99275538772111"
-InitSound.Volume = 1
+InitSound.Volume = 5
 InitSound.Parent = SoundService
 
 SoundInit = true
@@ -253,11 +253,11 @@ if type(loadstring) == "function" and type(game.HttpGet) == "function" then
 end
 
 TestService:Message(
-	"InitSound:", tostring(SoundInit),
-	"HiddenPart:", tostring(HiddenPart),
-	"Network:", tostring(Network)
-    "UTILS:", tostring(UTILS)
-    "ForcePart:", tostring(ForcePart)
-    "ToolEquiperDebugger:", tostring(ToolEquiperDebugger)
-    "ToolReCreante:", tostring(ToolReCreante)
+	"InitSound=" .. tostring(SoundInit) ..
+	" HiddenPart=" .. tostring(HiddenPart) ..
+	" Network=" .. tostring(Network) ..
+	" UTILS=" .. tostring(UTILS) ..
+	" ForcePart=" .. tostring(ForcePart) ..
+	" ToolEquiperDebugger=" .. tostring(ToolEquiperDebugger) ..
+	" ToolReCreante=" .. tostring(ToolReCreante)
 )
